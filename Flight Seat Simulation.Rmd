@@ -1,0 +1,227 @@
+---
+title: "Assignment_6_Group_3"
+author: "Jin Run, Jiang Tao, Mu Xin, Dang Vu Nguyen and Gunn Wei Lim"
+date: "9 March 2019"
+output: html_document
+---
+ABC Airlines has 100 economic class seats available in its flight from Singapore to Shanghai.
+Full price fare is 590 dollar. ABC is considering selling some seats at a discounted price of 450 dollar.
+The demand of the flight follows normal distribution with mean 110 and standard deviation 30.
+Based on past experience, ABC is able to sell all discounted tickets as long as there is demand.
+However, only 60% of the customers will buy full fare ticket when no more discounted tickets available.
+
+1) Build a simulation model to decide the optimal number of seats to be reserved as full fare seats.
+
+```{r}
+
+iteration <- function(full.fare.seats,iters,cap)
+{
+  #iterate demand for flight seats
+  seats <- trunc(rnorm(iters,110,30))
+
+  #Number of discount seats, if less than cap-full.fare.seats then discounts seats = seats.filled.
+  discount.seats <- sapply(seats,function(x) min(cap-full.fare.seats,x))
+  
+  #If number of seats < maximum discounts seats, full fare seats = 0.  if number of demand for discount seats 
+  #& demand for full fare seats <capacity, then it's 60% of seats minus max discounts seats. Else, will serve
+  #maximum full fare seats
+
+  filled.full.fare.seats <- ifelse(seats<(cap-full.fare.seats),0,ifelse(0.6*seats+0.4*(cap-full.fare.seats)<cap,trunc(0.6*(seats-cap+full.fare.seats)),full.fare.seats))
+  seatdf <- data.frame(full.fare=filled.full.fare.seats,discount=discount.seats)
+  seatdf$revenue <- 590*seatdf$full.fare + 450*seatdf$discount
+  return(mean(seatdf$revenue))
+}
+
+simulation1 <- function(iters, cap){
+  library(ggplot2)
+  results <- sapply(1:cap,iteration,iters,cap)
+  df <- data.frame(number.of.full.fare.seats=1:cap,average.revenue=results)
+  optimalSeat = which.max(results)
+  maxRev=max(results)
+  print(optimalSeat)
+  ggplot(df, aes(x=number.of.full.fare.seats,y=average.revenue)) + geom_line(group = 'average.revenue') + geom_vline(xintercept = optimalSeat,color='red',linetype='dashed') + geom_text(aes(x=optimalSeat-3, label=paste0("Optimal at ",optimalSeat,"with revenue of",maxRev), y=maxRev/2), colour="blue")
+}
+
+simulation1(2000000,100)
+
+```
+
+2) What if the mean demand change? How will it affect the full fare seats allocation?
+
+```{r}
+iteration2 <- function(full.fare.seats,mean.demand,iters,cap)
+{
+  #iterate demand for flight seats
+  seats <- trunc(rnorm(iters,mean.demand,30))
+
+  #Number of discount seats, if less than cap-full.fare.seats then discounts seats = seats.filled.
+  discount.seats <- sapply(seats,function(x) min(cap-full.fare.seats,x))
+  
+  #If number of seats < maximum discounts seats, full fare seats = 0.  if number of demand for discount seats 
+  #& demand for full fare seats <capacity, then it's 60% of seats minus max discounts seats. Else, will serve
+  #maximum full fare seats
+
+  filled.full.fare.seats <- ifelse(seats<(cap-full.fare.seats),0,ifelse(0.6*seats+0.4*(cap-full.fare.seats)<cap,trunc(0.6*(seats-cap+full.fare.seats)),full.fare.seats))
+  seatdf <- data.frame(full.fare=filled.full.fare.seats,discount=discount.seats)
+  seatdf$revenue <- 590*seatdf$full.fare + 450*seatdf$discount
+  return(mean(seatdf$revenue))
+}
+
+
+#Finding optimal number of full fare seats given mean demand
+simulation2 <- function(mean.demand,iters, cap){
+  results <- sapply(1:cap,iteration2,mean.demand,iters,cap)
+  optimalSeat = which.max(results)
+  return(optimalSeat)
+}
+
+
+#to Plot the correlation between optimal number of full fare seats for each mean demand
+demand.simu <- function(iters,cap){
+  library(ggplot2)
+  results <- sapply(50:200,simulation2,iters,cap)
+  df <- data.frame(seats.demand=50:200,optimal.full.fare.seats=results)
+  ggplot(df, aes(y=optimal.full.fare.seats,x=seats.demand)) + geom_line(group = 'seats.demand')
+}
+
+demand.simu(10000,100)
+
+```
+
+3) What if discount percentage change? How will it affect the full fare seats allocation?
+
+```{r}
+iteration3 <- function(full.fare.seats,discount.percent,iters,cap)
+{
+  #iterate demand for flight seats
+  seats <- trunc(rnorm(iters,110,30))
+
+  #Number of discount seats, if less than cap-full.fare.seats then discounts seats = seats.filled.
+  discount.seats <- sapply(seats,function(x) min(cap-full.fare.seats,x))
+  
+  #If number of seats < maximum discounts seats, full fare seats = 0.  if number of demand for discount seats 
+  #& demand for full fare seats <capacity, then it's 60% of seats minus max discounts seats. Else, will serve
+  #maximum full fare seats
+
+  filled.full.fare.seats <- ifelse(seats<(cap-full.fare.seats),0,ifelse(0.6*seats+0.4*(cap-full.fare.seats)<cap,trunc(0.6*(seats-cap+full.fare.seats)),full.fare.seats))
+  seatdf <- data.frame(full.fare=filled.full.fare.seats,discount=discount.seats)
+  #calculating average revenue
+  seatdf$revenue <- 590*seatdf$full.fare + 590*discount.percent*seatdf$discount
+  return(mean(seatdf$revenue))
+}
+iteration3(30,0.1,100,100)
+
+#Finding optimal number of full fare seats given discount percentage
+simulation3 <- function(discount.percent,iters, cap){
+  results <- sapply(1:cap,iteration3,discount.percent,iters,cap)
+  optimalSeat <- which.max(results)
+  return(optimalSeat)
+}
+simulation3(0.1,10,100)
+
+#to Plot the correlation between optimal number of full fare seats for each discount percentage
+discount.simu <- function(iters,cap){
+  library(ggplot2)
+  results <- sapply(seq(0.3, 1, by = 0.05),simulation3,iters,cap)
+  df <- data.frame(discount.percentage=seq(0.3, 1, by = 0.05),optimal.full.fare.seats=results)
+  ggplot(df, aes(x=discount.percentage,y=optimal.full.fare.seats)) + geom_line(group = 'optimal.full.fare.seats')
+}
+
+discount.simu(10000,100)
+```
+
+4) What is the best combination of seat allocation and discount percentage with respect to a particular demand?
+```{r}
+knitr::opts_chunk$set(echo=TRUE,warning=FALSE,message = FALSE)
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+GetSingleRev <- function(reserved,seats,demand,disc.p,full.p){
+  discount.seats <- seats - reserved
+  if (demand < discount.seats){
+    rev <- demand * disc.p
+  }else{ 
+    if(0.6*(demand-discount.seats) <= reserved ){
+      rev <- discount.seats * disc.p + round(0.6*(demand-discount.seats))*full.p
+    }
+    else{
+      rev <- discount.seats * disc.p + reserved*full.p
+    }
+  }
+  return (rev)
+}
+
+#Input: demand,disc.p, 
+#Iterate: reserved seats 
+#Output: revenues for all posible reserved seats 
+GetRevForAllReserved <-function(seats,demand,disc.p,full.p){
+  revenues <- sapply(0:seats,GetSingleRev,seats,demand,disc.p,full.p)
+  AllReserved <- data.frame(Reserved= 0:seats, revenues)
+  return(AllReserved)
+}
+
+#Input: disc.p
+#Iterate: demands
+#Outout: revenues for all mean posibilities 
+GetRevForAllDemand <-function(seats, min.mean,max.mean,sd,disc.p,full.p){
+  outcome <- data.frame()
+  for (i in seq(min.mean,max.mean, by=5)){
+    demand <- rnorm(1,i,sd)
+    demand <-ifelse(demand<0,0,demand)
+    #One line of result is a list of revenues for all Reserved numbers 
+    result <- GetRevForAllReserved(seats,demand,disc.p,full.p)
+    current.outcome <- cbind(result,i)
+    outcome <- rbind(outcome,current.outcome)
+  }
+  names(outcome) <-c("Reserved","Revenue","Demand Mean")
+  return(outcome)
+}
+
+#Fix demand,iterate for each percentage, find best # of reserved seats 
+RevenueForEachPercentage <-function(seats, min.percent, max.percent, min.mean, max.mean, sd, full.p){
+  outcome <- data.frame()
+  for (i in seq(min.percent,max.percent,by=5)){
+    disc.p <- (i)/100*full.p
+    #Each Result is a data frame 
+    result <- GetRevForAllDemand(seats, min.mean, max.mean,sd,disc.p,full.p)
+    current.outcome <- cbind(result,i)
+    outcome <- rbind(outcome,current.outcome)
+  }
+  names(outcome) <-c("Reserved","Revenue","Demand Mean","Discount Percentage")
+  return(outcome)
+}
+
+#For each mean, what is the best reserved seat 
+simulation <- function(iter, seats, min.percent,max.percent,min.mean,max.mean,sd,full.p) {
+  AllIterResult <- data.frame()
+  for (i in 1:iter) {
+    OneIterResult <-
+      RevenueForEachPercentage(seats, min.percent, max.percent, min.mean, max.mean, sd, full.p)
+      #names(OneIterResult) <- c("Percent", "disc.p", "revenue")
+      AllIterResult <- rbind(AllIterResult, OneIterResult)
+  }
+  #names(AllIterResult) <- c("Reserved","Revenue","Demand Mean","Discount Percentage")
+  
+  #Take average of all revenues from all iterations 
+  SumAllIterResult <- with(AllIterResult,aggregate(AllIterResult$Revenue, list(AllIterResult$Reserved,AllIterResult$`Demand Mean`,AllIterResult$`Discount Percentage`), mean))
+  names(SumAllIterResult) <- c("Reserved","Demand Mean","Discount Percentage","Revenue")
+  #Find the optimal reservation for each demand and discount percentage
+  Optimal <- SumAllIterResult %>% 
+    group_by(`Demand Mean`,`Discount Percentage`) %>% 
+    filter(Revenue==max(Revenue))
+  Optimal <- Optimal[,-4]
+  
+  resultMatrix <-round(dcast(Optimal,`Demand Mean` ~ `Discount Percentage`,value.var="Reserved",fun.aggregate = mean))
+  
+  p <- ggplot(Optimal, aes(x = `Demand Mean`, y = `Discount Percentage`)) +
+  geom_raster(aes(fill=Reserved)) +
+  scale_fill_gradient(low="red", high="blue") +
+  labs(x="Demand Mean", y="Discount Percentage", title="Matrix showing optimal number of seats reserved for full price") +
+  theme_bw() + theme(axis.text.x=element_text(size=9, angle=0, vjust=0.3),
+                     axis.text.y=element_text(size=9),
+                     plot.title=element_text(size=11))
+  print(resultMatrix)
+  print(p)
+  }
+simulation(100,100,0,100,50,200,30,590)
+```
